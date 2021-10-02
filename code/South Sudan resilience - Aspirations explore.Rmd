@@ -1,0 +1,109 @@
+---
+title: "South Sudan Resilience"
+subtitle: "Preliminary data review"
+date: "Oct 2021"
+output: 
+  html_document:
+    number_sections: true
+    toc_depth: 3
+    toc_float: true
+    theme: paper
+    fig.caption: true
+    code_folding: show
+    df_print: kable
+---
+
+```{r global_options, include=F, warning=F, message=F, echo=F, error=F}
+
+# standard figure size and generate clean output
+knitr::opts_chunk$set(fig.height=4, fig.width=6, warning=FALSE, message=FALSE, cache=TRUE, error=T, echo=T)
+
+library(here)
+
+source(here("code/00 South Sudan resilience - prep.R"))
+
+```
+
+# Introduction
+
+The South Sudan Monitoring and Evaluation Support Project (MESP) is conducting a household resilience survey in 13 counties. The purpose of this household survey is to obtain baseline data in the target areas for the indicators included in the Mission’s Performance Management Plan (PMP) and the Community Roadmap, in support of USAID/South Sudan’s Strategic Framework (2020-2024). 
+
+MESP has completed data collection in six counties, and as of October 2021 is carrying out data collection in the remaining seven counties. The study team is currently reviewing the data from six counties in advance of analysis of the full set of 13 counties. This document reviews a selection of measures and indices relating to resilience.    
+
+# Resilience
+
+The United States Agency for International Development (USAID) defines resilience as the ability of people, households, communities, countries, and systems to mitigate, adapt to and recover from shocks and stresses in a manner that reduces chronic vulnerability and facilitates inclusive growth [(Measuring Resilience in USAID)](https://www.usaid.gov/sites/default/files/documents/1866/Technical%20Note_Measuring%20Resilience%20in%20USAID_June%202013.pdf). Resilience is operationalized as a set of capacities that mediate the interaction of shocks and stresses on a measure of household well-being [(Tango International 2018)](https://www.fsnnetwork.org/sites/default/files/Methodology_Guide_Nov2018508.pdf). 
+
+Common well-being measures include poverty, food insecurity, child wasting, and self-perceived ability to recover from shocks or stresses. Shocks and stresses are measured across a range of specific events (shocks) or risks (stresses) and aggregated to a single measure of exposure. Capacities are measured along three primary indices, with each dimension consisting of its own set of sub-indices: 
+
+* **Absorptive capacity**  
+  - Access to informal safety nets  
+  - Bonding social capital  
+  - Access to cash savings  
+  - Access to remittances  
+  - Asset ownership  
+  - Shock preparedness and mitigation  
+  - Access to insurance  
+  - Access to humanitarian/development assistance  
+
+* **Adaptive capacity**  
+  - Bridging social capital  
+  - Linking social capital  
+  - Social network index   
+  - Education/training  
+  - Livelihood diversification  
+  - Exposure to information  
+  - Adoption of improved practices  
+  - Asset ownership  
+  - Availability of financial services  
+  - Aspirations/confidence to adapt/locus of control  
+
+* **Transformative capacity**  
+  - Access to formal safety nets  
+  - Access to markets   
+  - Access to communal natural resources  
+  - Access to basic services  
+  - Access to infrastructure  
+  - Access to livestock services  
+  - Bridging social capital  
+  - Linking social capital  
+  - Collective action   
+  - Social cohesion  
+  - Gender equitable decision-making index  
+  - Participation in local decision-making  
+  - Local government responsiveness  
+  - Gender index  
+
+The South Sudan resilience study reviewed this list of outcomes, shocks, and capacities and selected a subset of them for measuring resilience: 
+
+* Aspirations index
+* Dietary diversity
+
+
+# Aspirations index
+
+# Aspirations index - exploratory analysis
+
+The simple mean and other descriptives
+
+```{r}
+describe(dat$aspirations_index)
+```
+
+The weighted mean taking into account survey weights and clustering by enumeration area. 
+
+```{r}
+svymean(~aspirations_index,
+        na.rm=T,
+        deff="replace",
+        design=svydat)
+```
+
+
+```{r}
+ggplot(dat, aes(aspirations_index)) + 
+  geom_bar(width=.2, fill="dodgerblue2")
+```
+
+
+

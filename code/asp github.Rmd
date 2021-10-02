@@ -1,0 +1,45 @@
+---
+title: "Untitled"
+output: 
+  github_document:
+    toc: true
+---
+
+```{r global_options, include=F, warning=F, message=F, echo=F, error=F}
+
+# standard figure size and generate clean output
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, cache=TRUE, error=T, echo=T)
+
+library(here)
+
+source(here("code/00 South Sudan resilience - prep.R"))
+
+dat <- read_dta(here("data/04_scoring/mesp_household_baseline_hh_survey_scored.dta"))
+
+#setwd <- here()
+#here()
+
+```
+
+  toc: true
+  toc_depth:3
+  toc_float: true
+  number_sections: true
+  theme: paper
+  fig.caption: true
+  fig.height: 4
+  fig.width: 6
+  df_print: kable
+  code_folding: true
+
+```{r}
+describe(dat$aspirations_index)
+#getwd()
+#here()
+```
+
+```{r}
+ggplot(dat, aes(aspirations_index)) + 
+  geom_bar(width=.2, fill="dodgerblue2")
+```
+
