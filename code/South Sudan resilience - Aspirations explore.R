@@ -47,3 +47,22 @@ frq(dat$q_631)
 
 lapply(asp, frq)
 
+frq(dat$q_633)
+
+dat <- dat %>%
+  mutate(asp1 = ifelse(q_629==1, 1,0),
+         asp2 = ifelse(q_630==1, 1,0),
+         asp3 = case_when(q_634 < 4 ~ 1,
+                                     q_634 > 3 ~0,
+                                     TRUE ~ NA_real_),
+         asp4 = case_when(q_635 < 4 ~ 1,
+                                     q_635 > 3 ~ 0,
+                                     TRUE ~ NA_real_),
+         asp5 = ifelse(q_632==1, 1,0),
+         asp6 = ifelse(q_633==6, NA,
+                       ifelse(q_633==4 | q_633==5, 1, 0)),
+         aspirations_index2 = asp1 + asp2 + asp3 + asp4 + asp5 + asp6,
+         aspirations_index2_cen = scale(aspirations_index2))
+
+describe(dat$aspirations_index2)
+

@@ -156,41 +156,40 @@ asp <- dat %>%
          q_632,
          q_633,
          q_634,
-         q_635)
-
-
-head(asp)
-```
-```{r}
-lapply(asp, frq)
-```
-```{r}
-asp <- asp %>%
+         q_635,
+         abs_fatalism1:aspirations_index) %>%
   mutate(q629 = ifelse(q_629==1, 1,0),
          q630 = ifelse(q_630==1, 1,0),
          q632 = ifelse(q_632==1, 1,0),
          q633 = ifelse(q_633==1, NA,
                        ifelse(q_633==6, NA, q_633)),
          q634_rev = (max(q_634, na.rm=T) + 1) - q_634,
-         q635_rev = (max(q_635, na.rm=T) + 1) - q_635)
+         q635_rev = (max(q_635, na.rm=T) + 1) - q_635,
+         abs_fatalism2_2 = case_when(q_634 < 4 ~ 1,
+                                     q_634 > 3 ~0,
+                                     TRUE ~ NA_real_),
+         abs_fatalism3_2 = case_when(q_635 < 4 ~ 1,
+                                     q_635 > 3 ~ 0,
+                                     TRUE ~ NA_real_))
 
-lapply(asp2, frq)
 
+head(asp)
 ```
 
 ```{r}
-frq(asp2$q629)
+lapply(asp, frq)
 ```
+
 ```{r}
-names(asp3)
+names(asp)
+```
+#### Factor analysis of raw variables
+```{r}
 asp2 <- asp %>%
-  select(7:11, 6)
-
-asp3 <- asp %>%
-  select(7:12)
+  select(12:16, 6)
+names(asp2)
 
 ```
-
 ```{r}
 fa.parallel(asp2,
             cor="mixed")
@@ -201,27 +200,67 @@ asp2_fa <- fa(asp2,
             cor="mixed")
 asp2_fa
 ```
+
+### Factor analysis of raw variables, corrected
 ```{r}
-frq(asp$q_634)
+asp3 <- asp %>%
+  select(12:17)
+
+names(asp3)
 ```
 
 ```{r}
-frq(asp$q634_rev)
+#cor(asp$q634_rev,
+#    asp$q635_rev,
+#    use="pairwise.complete.obs")
 ```
 
+```{r}
+cor(asp$q634_rev,
+    asp$q635_rev,
+    use="pairwise.complete.obs")
+```
 
 
 ```{r}
 fa.parallel(asp3,
             cor="mixed")
 ```
+
 ```{r}
 asp3_fa <- fa(asp3,
               cor="mixed")
 asp3_fa
 ```
 
+### Corrected index
+
+```{r}
+asp <- asp %>%
+  mutate(aspirations_index2 = abs_fatalism1 + abs_fatalism2_2 + abs_fatalism3_2 + belief_future,
+         aspirations_corrected = )
+
+describe(asp[,c("aspirations_index","aspirations_index2")])
+
+```
+
+#### Factor analysis of computed variables, corrected
+
+```{r}
+fa.parallel(asp[,c("abs_fatalism1","abs_fatalism2_2","abs_fatalism3_2","belief_future")])
+```
+```{r}
+asp_comp_fa <- fa(asp[,c("abs_fatalism1","abs_fatalism2_2","abs_fatalism3_2","belief_future")],
+                  cor="tet")
+asp_comp_fa
+```
+
+
+
 ### Aspirations index - factor analysis with missing value imputation
 
+```{r}
+
+```
 
 

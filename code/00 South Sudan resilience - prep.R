@@ -7,7 +7,7 @@ packages <- c("arm", "BMA", "brms", "corrplot", "dummies","DescTools", "estimatr
               "readxl", "sjmisc", "sjPlot", "sjstats", "sjlabelled", "skimr","labelled", "texreg", "janitor","psych","dplyr",
               "tidyverse", "viridis", "here", "ggridges", "ggthemes", "DT", "jtools", "huxtable", "stringi", "gghighlight",
               "plm", "brms", "rstan", "rstanarm","tidybayes","texreg","gt","gtsummary","huxtable","stargazer", "gsynth",
-              "panelView", "assertr", "pointblank", "validate", "sandwich", "workflowr", "here")
+              "panelView", "assertr", "pointblank", "validate", "sandwich", "workflowr", "here", "missForest")
 
 lapply(packages, library, character.only=T)
 
@@ -104,6 +104,13 @@ regplot <- function(data, xmin, xmax, limits) {
 
   return(p)
 }
+
+revcode <- function(x) {
+  out <- (max(x) + 1) - x
+  out
+}
+
+#revcode(1:5)
 
 
 # data ----
