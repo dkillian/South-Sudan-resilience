@@ -30,9 +30,9 @@ The South Sudan Monitoring and Evaluation Support Project (MESP) is conducting a
 
 MESP has completed data collection in six counties, and as of October 2021 is carrying out data collection in the remaining seven counties. The study team is currently reviewing the data from six counties in advance of analysis of the full set of 13 counties. This document reviews a selection of measures and indices relating to resilience.    
 
-# Resilience
+# Resilience measures
 
-The United States Agency for International Development (USAID) defines resilience as the ability of people, households, communities, countries, and systems to mitigate, adapt to and recover from shocks and stresses in a manner that reduces chronic vulnerability and facilitates inclusive growth [(Measuring Resilience in USAID)](https://www.usaid.gov/sites/default/files/documents/1866/Technical%20Note_Measuring%20Resilience%20in%20USAID_June%202013.pdf). Resilience is operationalized as a set of capacities that mediate the interaction of shocks and stresses on a measure of household well-being [(Tango International 2018)](https://www.fsnnetwork.org/sites/default/files/Methodology_Guide_Nov2018508.pdf). 
+The United States Agency for International Development (USAID) defines resilience as the ability of people, households, communities, countries, and systems to mitigate, adapt to and recover from shocks and stresses in a manner that reduces chronic vulnerability and facilitates inclusive growth [(Measuring Resilience in USAID)](https://www.usaid.gov/sites/default/files/documents/1866/Technical%20Note_Measuring%20Resilience%20in%20USAID_June%202013.pdf). For USAID-funded activities, resilience is operationalized as a set of capacities that mediate the interaction of shocks and stresses on a measure of household well-being [(Tango International 2018)](https://www.fsnnetwork.org/sites/default/files/Methodology_Guide_Nov2018508.pdf). 
 
 Common well-being measures include poverty, food insecurity, child wasting, and self-perceived ability to recover from shocks or stresses. Shocks and stresses are measured across a range of specific events (shocks) or risks (stresses) and aggregated to a single measure of exposure. Capacities are measured along three primary indices, with each dimension consisting of its own set of sub-indices: 
 
@@ -74,15 +74,23 @@ Common well-being measures include poverty, food insecurity, child wasting, and 
   - Local government responsiveness  
   - Gender index  
 
+The Food and Agricultural Organization (FAO) also has a methodology for measuring resilience [(FAO 2016)](). 
+
+# Resilience measurement
+
 The South Sudan resilience study reviewed this list of outcomes, shocks, and capacities and selected a subset of them for measuring resilience: 
 
 * Aspirations index
 * Dietary diversity
 
 
-# Aspirations index
+# South Sudan resilience - exploratory analysis
 
-# Aspirations index - exploratory analysis
+## Aspirations index
+
+### Aspirations index composition
+
+### Aspirations index
 
 The simple mean and other descriptives
 
@@ -98,12 +106,122 @@ svymean(~aspirations_index,
         deff="replace",
         design=svydat)
 ```
+```{r}
+svyquantile(~aspirations_index,
+            na.rm=T,
+            quantiles=c(.25,.5, .75),
+            design=svydat)
+```
 
 
 ```{r}
 ggplot(dat, aes(aspirations_index)) + 
-  geom_bar(width=.2, fill="dodgerblue2")
+  geom_bar(width=.2, fill="dodgerblue2") + 
+  geom_vline(xintercept=2.74, size=1, color="darkgoldenrod2") + 
+  geom_vline(xintercept=3, size=1, color="turquoise")
 ```
+
+```{r}
+asp_cnty <- dat %>%
+  group_by(county) %>%
+  summarize(asp = mean(aspirations_index, na.rm=T),
+            se = std.error(aspirations_index)) %>%
+  mutate(lower=asp-1.96*se,
+         upper=asp+1.96*se)
+
+asp_cnty
+```
+
+```{r}
+ggplot(asp_cnty, aes(asp, fct_reorder(county, asp))) + 
+  geom_vline(xintercept=2.74, size=1, alpha=.7, color="darkgoldenrod2") +
+  #geom_vline(xintercept=3, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower, xmax=upper),
+                color="dodgerblue",
+                width=0,
+                size=1) +
+  scale_x_continuous(limits=c(0,4)) +
+  labs(x="Aspirations index",
+       y="")
+```
+
+
+### Aspirations index - factor analysis construction
+
+```{r}
+asp <- dat %>%
+  select(q_629,
+         q_630,
+         q_632,
+         q_633,
+         q_634,
+         q_635)
+
+
+head(asp)
+```
+```{r}
+lapply(asp, frq)
+```
+```{r}
+asp <- asp %>%
+  mutate(q629 = ifelse(q_629==1, 1,0),
+         q630 = ifelse(q_630==1, 1,0),
+         q632 = ifelse(q_632==1, 1,0),
+         q633 = ifelse(q_633==1, NA,
+                       ifelse(q_633==6, NA, q_633)),
+         q634_rev = (max(q_634, na.rm=T) + 1) - q_634,
+         q635_rev = (max(q_635, na.rm=T) + 1) - q_635)
+
+lapply(asp2, frq)
+
+```
+
+```{r}
+frq(asp2$q629)
+```
+```{r}
+names(asp3)
+asp2 <- asp %>%
+  select(7:11, 6)
+
+asp3 <- asp %>%
+  select(7:12)
+
+```
+
+```{r}
+fa.parallel(asp2,
+            cor="mixed")
+```
+
+```{r}
+asp2_fa <- fa(asp2,
+            cor="mixed")
+asp2_fa
+```
+```{r}
+frq(asp$q_634)
+```
+
+```{r}
+frq(asp$q634_rev)
+```
+
+
+
+```{r}
+fa.parallel(asp3,
+            cor="mixed")
+```
+```{r}
+asp3_fa <- fa(asp3,
+              cor="mixed")
+asp3_fa
+```
+
+### Aspirations index - factor analysis with missing value imputation
 
 
 
