@@ -7,6 +7,7 @@
 source("code/00 South Sudan resilience - prep.R")
 
 library(missMDA)
+library(missForest)
 
 #dat <- read_dta("data/04_scoring/mesp_household_baseline_hh_survey_scored.dta")
 
@@ -28,6 +29,8 @@ library(missMDA)
 # dat <- read_rds(file="data/04_scoring/mesp_household_baseline_hh_survey_scored.dta")
 
 ?read_rds
+
+# Aspirations ---- 
 
 frq(dat$q_629)
 
