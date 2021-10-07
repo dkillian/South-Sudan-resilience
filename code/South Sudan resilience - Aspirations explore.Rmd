@@ -5,6 +5,7 @@ date: "Oct 2021"
 output: 
   html_document:
     number_sections: true
+    toc: true
     toc_depth: 3
     toc_float: true
     theme: paper
@@ -21,6 +22,11 @@ knitr::opts_chunk$set(fig.height=4, fig.width=6, warning=FALSE, message=FALSE, c
 library(here)
 
 source(here("code/00 South Sudan resilience - prep.R"))
+
+svyrdat <- dat %>%
+  as_survey_design(ids = ea,
+                   strata=county,
+                   weights=final_wt1)
 
 ```
 
@@ -540,7 +546,7 @@ Weighted values by county
 ```{r}
 loc_cnty_wt <- svyrdat %>%
   group_by(county) %>%
-  summarize(loc = survey_mean(Locus, na.rm=T)) %>%
+  summarise(loc = survey_mean(Locus, na.rm=T)) %>%
   mutate(lower=loc-1.96*loc_se,
          upper=loc+1.96*loc_se)
 
