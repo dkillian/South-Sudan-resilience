@@ -69,3 +69,80 @@ dat <- dat %>%
 
 describe(dat$aspirations_index2)
 
+write_dta(dat, "data/local/mesp_household_baseline_hh_survey_weighted.dta")
+
+svydat <- svydesign(data = dat,
+                    ids = ~ea,
+                    weights= ~final_wt1,
+                    strata = ~county)
+
+svyrdat <- dat %>%
+  as_survey_design(ids = ea,
+                   strata=county,
+                   weights=final_wt1)
+
+
+
+# missing data imputation ---- 
+
+locus <- dat %>%
+  select(county,
+         hhsize=household_members,
+         q_636:q_638) %>%
+  as.data.frame() %>%
+  mutate(County = factor(county)) %>%
+  select(-county)
+
+#locus[,2:5] <- lapply(locus[,2:5], as.numeric)
+locus[,1:4] <- lapply(locus[,1:4], as.numeric)
+
+
+str(locus)
+head(locus)
+describe(locus)
+frq(locus$county)
+
+?missForest
+locus_out <- missForest(xmis=locus)
+
+locus_out
+
+locus_forest_out <- locus_out$ximp
+
+describe(locus_forest_out)
+
+locus_famd_imp <- imputeFAMD(locus)
+
+str(locus_famd_imp)
+
+locus_famd_out <- locus_famd_imp$completeObs
+
+str(locus_famd_out)
+describe(locus_famd_out)
+
+frq(locus$County)
+
+locus_forest_out %>%
+  select(2:4) %>%
+  fa.parallel(cor="poly")
+
+loc_forest_fa <- locus_forest_out %>%
+  select(2:4) %>%
+  fa(cor="poly")
+
+loc_forest_fa
+str(loc_forest_fa)
+
+a <- loc_forest_fa$scores
+describe(a)
+
+frq(a)
+
+dat <- dat %>%
+  mutate(Locus = loc_forest_fa$scores)
+
+describe(dat$Locus)
+
+ggplot(dat, aes(x=Locus)) + 
+  geom_density(color="darkblue", size=1)
+

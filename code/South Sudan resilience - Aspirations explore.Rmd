@@ -9,7 +9,7 @@ output:
     toc_float: true
     theme: paper
     fig.caption: true
-    code_folding: show
+    code_folding: hide
     df_print: kable
 ---
 
@@ -98,7 +98,7 @@ include_graphics(here("exploratory analysis/viz/maps/MESP_HH_Survey_Sampling_Poi
 ```
 A total sample size of 3,563 households were apportioned relatively evenly across the six counties. 
 
-```{r}
+```{r include=F}
 svytotal(~county,
          deff="replace",
          design=svydat)
@@ -160,9 +160,7 @@ svyrdat %>%
 
 In the exploratory analysis that follows, both weighted or unweighted frequencies may be used. Generally speaking, when reporting an overall measure such as a mean or frequency, weighted measures should be considered as the estimates of their respective population parameters. In other cases where interest may be more in how the measures vary across disaggregations of interest, unweighted measures may be used. 
 
-# South Sudan resilience - exploratory analysis
-
-## Aspirations index
+# Aspirations index
 
 Following [(Tango International 2018)](https://www.fsnnetwork.org/sites/default/files/Methodology_Guide_Nov2018508.pdf){target="blank"}, the Aspirations index comprises six binary choice survey items, in which respondents either affirm or deny statements relating to their sense of agency in life, or whether the household has concrete plans for the future. The following table shows these items and their overall weighted frequencies. 
 
@@ -187,7 +185,7 @@ asp <- svyrdat %>%
                         "Desire for their children to graduate from secondary school")) %>%
    select(var_name, item_num, Description, Percent=V1)
 
-kable(asp)
+asp
 ```
 Note the low values for the reverse coded items, suggesting some combination of acquiescence bias (uncritically affirming the implicit premise of the question) or lack of comprehension of a reverse-coded question in which the respondent must disagree with the implicit premise in order to communicate their stance. These reverse-coded items should be considered more critically for inclusion in any index computation. 
 
@@ -216,6 +214,7 @@ ggplot(dat, aes(aspirations_index2)) +
   geom_vline(xintercept=4, size=1, color="turquoise") +
   scale_x_continuous(breaks=0:6)
 ```
+
 Unweighted values by county. 
 
 ```{r}
@@ -243,6 +242,7 @@ ggplot(asp_cnty, aes(asp, fct_reorder(county, asp))) +
   labs(x="Aspirations index",
        y="")
 ```
+
 Weighted values by county
 
 ```{r}
@@ -270,7 +270,7 @@ ggplot(asp_cnty_wt, aes(asp, fct_reorder(county, asp))) +
        y="")
 ```
 
-### Aspirations index - factor analysis construction
+## Aspirations index - factor analysis construction
 
 Assess suitability of measures for index construction using factor analysis
 
@@ -400,70 +400,171 @@ library(effectsize)
 interpret_nnfi(asp4_fa)
 ```
 
-I'm not sure how to interpret the fit scores, but I think we can generate an index out of these three items. 
+I'm not sure how to interpret the fit scores, but I think we can generate an index out of these three items. Let's impute missing values and generate the index. 
 
+## Impute missing values
 
-
-### Factor analysis of raw variables, corrected
 ```{r}
-asp3 <- asp %>%
-  select(12:17)
+locus <- dat %>%
+  select(county,
+         hhsize=household_members,
+         q_636:q_638) %>%
+  as.data.frame() %>%
+  mutate(County = factor(county)) %>%
+  select(-county)
 
-names(asp3)
+locus[,1:4] <- lapply(locus[,1:4], as.numeric)
+#str(locus)
+
 ```
 
 ```{r}
-#cor(asp$q634_rev,
-#    asp$q635_rev,
-#    use="pairwise.complete.obs")
+locus_imp <- missForest(locus)
+
+locus_imp$OOBerror
+
+locus_out <- locus_imp$ximp
+```
+
+Compare means for raw and imputed variables
+
+```{r}
+describe(locus)
 ```
 
 ```{r}
-cor(asp$q634_rev,
-    asp$q635_rev,
-    use="pairwise.complete.obs")
-```
-
-
-```{r}
-fa.parallel(asp3,
-            cor="mixed")
+describe(locus_out)
 ```
 
 ```{r}
-asp3_fa <- fa(asp3,
-              cor="mixed")
-asp3_fa
-```
+a <- locus %>%
+  mutate(id=1:3563) %>%
+  filter(is.na(hhsize) |
+           is.na(q_636) |
+           is.na(q_637) |
+           is.na(q_638))
 
-### Corrected index
+a_id <- a$id
+
+a[1:6,]
+```
 
 ```{r}
-asp <- asp %>%
-  mutate(aspirations_index2 = abs_fatalism1 + abs_fatalism2_2 + abs_fatalism3_2 + belief_future,
-         aspirations_corrected = )
+b <- locus_out %>%
+  mutate(id=1:3563) %>%
+  filter(id %in% a_id)
 
-describe(asp[,c("aspirations_index","aspirations_index2")])
+b[1:6,]
 
 ```
-
-#### Factor analysis of computed variables, corrected
+Now generate the index
 
 ```{r}
-fa.parallel(asp[,c("abs_fatalism1","abs_fatalism2_2","abs_fatalism3_2","belief_future")])
+loc_fa <- locus_out %>%
+  select(2:4) %>%
+  fa(cor="poly")
+loc_fa
 ```
-```{r}
-asp_comp_fa <- fa(asp[,c("abs_fatalism1","abs_fatalism2_2","abs_fatalism3_2","belief_future")],
-                  cor="tet")
-asp_comp_fa
-```
-
-
-
-### Aspirations index - factor analysis with missing value imputation
+Compare to the non-imputed loadings
 
 ```{r}
-
+asp4_fa
 ```
+The loading for q_636 goes down a tad, but otherwise ok 
+
+```{r}
+dat <- dat %>%
+  mutate(Locus = loc_fa$scores)
+
+describe(dat$Locus)
+```
+
+```{r}
+ggplot(dat, aes(Locus)) + 
+  geom_density(size=1, color="darkblue")
+```
+
+## Compare output
+
+By county
+
+```{r}
+loc_cnty <- dat %>%
+  group_by(county) %>%
+  summarize(loc = mean(Locus, na.rm=T),
+            se = std.error(Locus),
+            q638=mean(q_638, na.rm=T),
+            se2 = std.error(q_638, na.rm=T)) %>%
+  mutate(lower=loc-1.96*se,
+         upper=loc+1.96*se,
+         lower2 = q638-1.96*se2,
+         upper2 = q638+1.96*se2)
+
+loc_cnty
+```
+
+```{r}
+ggplot(loc_cnty, aes(loc, fct_reorder(county, loc))) + 
+  geom_vline(xintercept=0, size=1, alpha=.7, color="grey60") +
+#  geom_vline(xintercept=4, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower, xmax=upper),
+                color="dodgerblue",
+                width=0,
+                size=1.1) +
+  scale_x_continuous(limits=c(-1,1),
+                     breaks=seq(-1,1,.5)) +
+  labs(x="Locus of control index",
+       y="")
+```
+
+```{r}
+
+ggplot(loc_cnty, aes(q638, fct_reorder(county, q638))) + 
+  geom_vline(xintercept=mean(dat$q_638, na.rm=T), size=1, alpha=.7, color="darkgoldenrod2") +
+  #geom_vline(xintercept=4, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower2, xmax=upper2),
+                color="dodgerblue",
+                width=0,
+                size=1.1) +
+  scale_x_continuous(limits=c(4,6),
+                     breaks=4:6) +
+  labs(x="My life is determined by my own actions",
+       y="")
+```
+
+
+Weighted values by county
+
+```{r}
+loc_cnty_wt <- svyrdat %>%
+  group_by(county) %>%
+  summarize(loc = survey_mean(Locus, na.rm=T)) %>%
+  mutate(lower=loc-1.96*loc_se,
+         upper=loc+1.96*loc_se)
+
+loc_cnty_wt
+```
+
+```{r}
+ggplot(loc_cnty_wt, aes(loc, fct_reorder(county, loc))) + 
+  geom_vline(xintercept=0, size=1, alpha=.7, color="grey60") +
+#  geom_vline(xintercept=4, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower, xmax=upper),
+                color="dodgerblue",
+                width=0,
+                size=1.1) +
+  scale_x_continuous(limits=c(-1,1),
+                     breaks=seq(-1,1,.5)) +
+  labs(x="Locus of control index",
+       y="")
+```
+# Concluding thoughts
+
+- Aspirations index items don't play well together
+- Reverse coded items confounded respondents
+- Locus of control sub-index did work and can be used instead of the larger aspirations index
 
 
