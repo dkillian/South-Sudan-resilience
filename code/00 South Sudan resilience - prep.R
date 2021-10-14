@@ -115,7 +115,9 @@ revcode <- function(x) {
 
 # data ----
 
-dat <- read_dta(here("data/local/mesp_household_baseline_hh_survey_weighted.dta"))
+#dat <- read_dta(here("data/local/mesp_household_baseline_hh_survey_weighted.dta"))
+
+dat <- read_dta(here("data/local/SSD resilience baseline prepared.dta"))
 
 svydat <- svydesign(data = dat,
                     ids = ~ea,
