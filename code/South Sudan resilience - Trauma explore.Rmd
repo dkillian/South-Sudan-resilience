@@ -1,0 +1,328 @@
+---
+title: "South Sudan resilience"
+subtitle: "Trauma explore"
+date: "10/14/2021"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: paper
+    fig.caption: true
+    code_folding: hide
+    df_print: kable
+---
+
+```{r global_options, include=F, warning=F, message=F, echo=F, error=F}
+
+# standard figure size and generate clean output
+knitr::opts_chunk$set(fig.height=4, fig.width=6, warning=FALSE, message=FALSE, cache=TRUE, error=T, echo=T)
+
+library(here)
+
+source(here("code/00 South Sudan resilience - prep.R"))
+
+svyrdat <- dat %>%
+  as_survey_design(ids = ea,
+                   strata=county,
+                   weights=final_wt1)
+
+```
+
+# Introduction
+
+The South Sudan Monitoring and Evaluation Support Project (MESP) is conducting a household resilience survey in 13 counties. The purpose of this household survey is to obtain baseline data in the target areas for the indicators included in the Mission's Performance Management Plan (PMP) and the Community Roadmap, in support of USAID/South Sudan's Strategic Framework (2020-2024).
+
+MESP has completed data collection in six counties, and as of October 2021 is carrying out data collection in the remaining seven counties. The study team is currently reviewing the data from six counties in advance of analysis of the full set of 13 counties. This document is one of a series of documents to review various measures and indices relating to resilience.
+
+# Experience of trauma
+
+The survey asks six questions pertaining to the incidence of trauma. The preparatory text explains that trauma occurs when distressing events cause stress that changes a person's thinking, feelings, behavior, interpersonal relationships, physical well-being, or functioning for daily activities. The following table shows these item frequencies.
+
+```{r}
+trauma <- dat %>%
+  select(q_711,
+         q_715,
+         q_719,
+         q_723,
+         q_727,
+         q_731)
+
+dat <- dat %>%
+  mutate(trauma_thoughts = case_when(q_711 == 1 ~ 1,
+                                     TRUE ~ 0),
+         trauma_feelings = case_when(q_715 == 1 ~ 1,
+                                     TRUE ~ 0),
+         trauma_behavior = case_when(q_719 == 1 ~ 1,
+                                     TRUE ~ 0),
+         trauma_relations = case_when(q_723 == 1 ~ 1,
+                                     TRUE ~ 0),
+         trauma_physical = case_when(q_727 == 1 ~ 1,
+                                     TRUE ~ 0),
+         trauma_function = case_when(q_731 == 1 ~ 1,
+                                     TRUE ~ 0)) 
+
+trauma <- dat %>%
+  select(trauma_thoughts:trauma_function)
+
+trauma_out <- trauma %>%
+  summarize(trauma_thoughts=mean(trauma_thoughts))
+
+trauma_out <- svyrdat %>%
+  group_by() %>%
+  summarize(trauma_thoughts=survey_mean(trauma_thoughts),
+            trauma_feelings=survey_mean(trauma_feelings),
+            trauma_behavior=survey_mean(trauma_behavior),
+            trauma_relations=survey_mean(trauma_relations),
+            trauma_physical=survey_mean(trauma_physical),
+            trauma_function=survey_mean(trauma_function)) %>%
+  select(1,3,5,7,9,11) %>%
+  t() %>%
+  as.data.frame() %>%
+  rownames_to_column("var_name") %>%
+  mutate(item_num=c("q_711","q_715","q_719","q_723", "q_727","q_731"),
+         Description=c("Problems with thinking", 
+                       "Problems with emotions",
+                       "Problems with behavior",
+                       "Problems with relationships",
+                       "Problems with physical symptoms",
+                       "Problems with physical functioning")) %>%
+  select(var_name, item_num, Description, Percent=V1)
+
+trauma_out
+
+
+```
+
+A composite variable takes the value one if any of those symptoms were reported, zero otherwise. The incidence of this composite variable for exposure to trauma is 84 percent. 
+
+```{r}
+trauma_mn <- svyrdat %>%
+  group_by() %>%
+  summarize(trauma=survey_mean(trauma, na.rm=T))
+
+trauma_mn
+```
+
+
+```{r}
+trauma_cnty <- svyrdat %>%
+  group_by(county) %>%
+  summarize(se = std.error(trauma),
+            trauma=mean(trauma, na.rm=T)) %>%
+  mutate(lower=trauma-1.96*se,
+         upper=trauma+1.96*se)
+
+trauma_cnty
+```
+
+```{r}
+ggplot(trauma_cnty, aes(trauma, fct_reorder(county, trauma))) + 
+  geom_vline(xintercept=trauma_mn[,1], size=1, alpha=.7, color="darkgoldenrod2") +
+  #geom_vline(xintercept=4, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower, xmax=upper),
+                color="dodgerblue",
+                width=0,
+                size=1) +
+  scale_x_continuous(limits=c(.5,1),
+                     breaks=seq(.5,1, .1),
+                     labels=percent) +
+  labs(x="Incidence of any trauma",
+       y="")
+```
+We can also look to see if there is any implicit structure in the six trauma variables, such that there may be specific types of trauma. we conduct parallel analysis to suggest any hidden structure.  
+
+### Three factor model
+
+```{r}
+fa.parallel(trauma,
+            cor="tet")
+```
+One component, as many as three factors. Let's investigate. 
+
+```{r}
+trauma_fa_3 <- fa(trauma,
+                  nfactors=3,
+                  cor="tet",
+                  fm="ml",
+                  scores="tenBerge")
+
+trauma_fa_3
+```
+The first factor (ML1) is built on problems with personal relationships, behavior, and physical symptoms. 
+
+The second factor (ML3) is built on problems with feelings and thoughts. 
+
+The third factor (ML2) is built on problems with physical symptoms.
+
+This three-factor model captures 87 percent of the variance across the six trauma variables. Correlation between factors is high. Model goodness of fit is high.  
+
+```{r}
+fa.diagram(trauma_fa_3)
+```
+For purposes of using a measure of psycho-social stress to help model household resilience, we might consider ML3 (problems with thoughts and feelings) to be the factor that best captures a generalized measure of mental or emotional stress. Problems with personal relationships and behavior (ML1) may capture behavioral issues unrelated to stress from the environment, while problems with physical symptoms (ML2) may capture sickness or injury that is unrelated to stress from the environment. In the three-factor model, the 'stress' factor accounts for 25 percent of the variance across the six trauma items. 
+
+```{r}
+trauma_3_stress <- trauma_fa_3$scores %>%
+  as.data.frame() %>%
+  select(stress=2)
+describe(trauma_3_stress)
+```
+
+```{r}
+ggplot(trauma_3_stress, aes(stress)) + 
+  geom_density()
+```
+Given the bimodal density of this variable, we should probably make it binary, and/or cut it by some quantile. 
+
+```{r}
+trauma_3_stress <- trauma_3_stress %>%
+  mutate(stress_bin = ifelse(stress>.8, 1,0),
+         stress_quin = ntile(stress, 5))
+
+frq(trauma_3_stress$stress_bin)
+
+```
+
+```{r}
+frq(trauma_3_stress$stress_quin)
+```
+## Two factor model
+
+```{r}
+trauma_fa_2 <- fa(trauma,
+                  nfactors=2,
+                  fm="ml",
+                  scores="tenBerge",
+                  cor="tet")
+
+trauma_fa_2
+```
+The first factor is built on problems with personal relationships, physical functioning, behavior, and physical symptoms. 
+
+The second factor is built on problems with feelings and thoughts. 
+
+The two-factor model captures 81 percent of the variance across the six trauma items. Correlation between factors is high. Model goodness of fit is good (TLI .845, RMSEA .25), but not great. 
+
+```{r}
+fa.diagram(trauma_fa_2)
+```
+The two-factor model does not appear as strong as the three-factor model, but the stress factors are largely the same across the two models. Additionally, note that in the two-factor model the stress factor accounts for 28 percent of the variance across the six trauma items, while the stress factor in the three-factor model accounts for slightly less at 25 percent of the total variance.  
+
+```{r}
+trauma_2_stress <- trauma_fa_2$scores %>%
+  as.data.frame() %>%
+  select(stress=2)
+describe(trauma_2_stress)
+```
+
+```{r}
+ggplot(trauma_2_stress, aes(stress)) + 
+  geom_density()
+```
+Same density. 
+
+```{r}
+trauma_2_stress <- trauma_2_stress %>%
+  mutate(stress_bin = ifelse(stress>.8, 1,0),
+         stress_quin = ntile(stress, 5))
+
+frq(trauma_2_stress$stress_bin)
+
+```
+
+```{r}
+frq(trauma_2_stress$stress_quin)
+```
+```{r}
+ggplot(trauma_2_stress, aes(stress_quin, stress)) + 
+  geom_point(color="dodgerblue2", alpha=.4) + 
+  stat_summary(fun.y="mean", geom="line", size=1, color="dodgerblue2", alpha=.6) +
+  stat_summary(fun.y="mean", geom="point", size=3, color="darkblue", alpha=.6)
+```
+
+
+```{r}
+trauma_fa_1 <- fa(trauma,
+                  nfactors=1,
+                  fm="ml",
+                  #scores="tenBerge", didn't converge
+                  cor="tet")
+
+trauma_fa_1
+```
+The single factor (or component) model has high loadings across all items. 
+
+The single factor model captures 75 percent of the variance across all six trauma items. Model goodness of fit is good (TLI .85, RMSEA .25), but not great. 
+
+```{r}
+fa.diagram(trauma_fa_1)
+```
+## Clustering 
+
+We can also apply a clustering algorithm, which tends to be used more often by biologists and geneticists. 
+
+
+```{r}
+trauma_clust <- iclust(trauma)
+```
+Clustering identifies a hierarchical structure of six clusters. Three of these clusters appear to map fairly closely to the factors from our previous analysis: Cluster one (C1) corresponds to the psycho-social stress variable. Cluster three (C3) corresponds to physical symptoms. Cluster two (C2) corresponds to relationships and behavior. 
+
+The model also identifies three other clusters, that appear to comprise individual items as well as other clusters. 
+
+```{r}
+trauma_clust
+```
+
+```{r}
+trauma_clust[20]
+```
+Another clustering algorithm is known as k-means clustering. 
+
+# K-Means Cluster Analysis
+fit <- kmeans(mydata, 5) # 5 cluster solution
+# get cluster means
+aggregate(mydata,by=list(fit$cluster),FUN=mean)
+# append cluster assignment
+mydata <- data.frame(mydata, fit$cluster)
+
+```{r}
+trauma_clus_fit <- kmeans(trauma, 3)
+
+plot(trauma_clus_fit)
+
+ggplot(trauma, aes())
+
+```
+
+
+```{r}
+trauma <- trauma %>%
+  mutate(kclust=trauma_clus_fit$cluster)
+
+trauma_2_stress <- trauma_2_stress %>%
+  mutate(kclust=trauma_clus_fit$cluster)
+
+
+frq(trauma$kclust)
+head(trauma_2_stress)
+
+```
+
+```{r}
+#ggplot(trauma_2_stress, aes(kclust, stress)) + 
+#  geom_point()
+```
+
+```{r}
+trauma_2_stress %>%
+  group_by(kclust) %>%
+  summarize(stress=mean(stress))
+```
+Looks like cluster 2 corresponds to the stress variable. 
+
+# Concluding thoughts
+
+
