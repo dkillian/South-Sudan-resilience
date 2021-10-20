@@ -2,7 +2,7 @@
 # data prep
 
 packages <- c("arm", "BMA", "brms", "corrplot", "dummies","DescTools", "estimatr","extrafont", "extrafontdb", "janitor",
-              "reshape2","tidyr","broom", "haven", "HH","Hmisc","lubridate","knitr", "margins", "magrittr", "plotrix",
+              "reshape2","tidyr","broom", "caret", "haven", "HH","Hmisc","lubridate","knitr", "margins", "magrittr", "plotrix",
               "scales","survey", "srvyr", "sysfonts", "foreign","car", "ICC", "openxlsx", "ggrepel", "readr",
               "readxl", "sjmisc", "sjPlot", "sjstats", "sjlabelled", "skimr","labelled", "texreg", "janitor","psych","dplyr",
               "tidyverse", "viridis", "here", "ggridges", "ggthemes", "DT", "jtools", "huxtable", "stringi", "gghighlight",
@@ -117,14 +117,14 @@ revcode <- function(x) {
 
 #dat <- read_dta(here("data/local/mesp_household_baseline_hh_survey_weighted.dta"))
 
-dat <- read_dta(here("data/local/SSD resilience baseline prepared.dta"))
-
-svydat <- svydesign(data = dat,
-                    ids = ~ea,
-                    weights= ~final_wt1,
-                    strata = ~county)
-
-svyrdat <- dat %>%
-  as_survey_design(ids = ea,
-                   strata=county,
-                   weights=final_wt1)
+# dat <- read_dta(here("data/local/SSD resilience baseline prepared.dta"))
+# 
+# svydat <- svydesign(data = dat,
+#                     ids = ~ea,
+#                     weights= ~final_wt1,
+#                     strata = ~county)
+# 
+# svyrdat <- dat %>%
+#   as_survey_design(ids = ea,
+#                    strata=county,
+#                    weights=final_wt1)

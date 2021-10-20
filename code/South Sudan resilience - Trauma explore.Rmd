@@ -132,7 +132,8 @@ ggplot(trauma_cnty, aes(trauma, fct_reorder(county, trauma))) +
   labs(x="Incidence of any trauma",
        y="")
 ```
-We can also look to see if there is any implicit structure in the six trauma variables, such that there may be specific types of trauma. we conduct parallel analysis to suggest any hidden structure.  
+
+We can also look to see if there is any implicit structure in the six trauma variables, such that there may be specific types of trauma. We conduct parallel analysis to suggest any hidden structure.  
 
 ### Three factor model
 
@@ -162,12 +163,14 @@ This three-factor model captures 87 percent of the variance across the six traum
 ```{r}
 fa.diagram(trauma_fa_3)
 ```
+
 For purposes of using a measure of psycho-social stress to help model household resilience, we might consider ML3 (problems with thoughts and feelings) to be the factor that best captures a generalized measure of mental or emotional stress. Problems with personal relationships and behavior (ML1) may capture behavioral issues unrelated to stress from the environment, while problems with physical symptoms (ML2) may capture sickness or injury that is unrelated to stress from the environment. In the three-factor model, the 'stress' factor accounts for 25 percent of the variance across the six trauma items. 
 
 ```{r}
 trauma_3_stress <- trauma_fa_3$scores %>%
   as.data.frame() %>%
   select(stress=2)
+
 describe(trauma_3_stress)
 ```
 
@@ -175,6 +178,7 @@ describe(trauma_3_stress)
 ggplot(trauma_3_stress, aes(stress)) + 
   geom_density()
 ```
+
 Given the bimodal density of this variable, we should probably make it binary, and/or cut it by some quantile. 
 
 ```{r}
@@ -215,6 +219,7 @@ The two-factor model does not appear as strong as the three-factor model, but th
 trauma_2_stress <- trauma_fa_2$scores %>%
   as.data.frame() %>%
   select(stress=2)
+
 describe(trauma_2_stress)
 ```
 
@@ -222,6 +227,7 @@ describe(trauma_2_stress)
 ggplot(trauma_2_stress, aes(stress)) + 
   geom_density()
 ```
+
 Same density. 
 
 ```{r}
@@ -260,6 +266,7 @@ The single factor model captures 75 percent of the variance across all six traum
 ```{r}
 fa.diagram(trauma_fa_1)
 ```
+
 ## Clustering 
 
 We can also apply a clustering algorithm, which tends to be used more often by biologists and geneticists. 
@@ -268,6 +275,7 @@ We can also apply a clustering algorithm, which tends to be used more often by b
 ```{r}
 trauma_clust <- iclust(trauma)
 ```
+
 Clustering identifies a hierarchical structure of six clusters. Three of these clusters appear to map fairly closely to the factors from our previous analysis: Cluster one (C1) corresponds to the psycho-social stress variable. Cluster three (C3) corresponds to physical symptoms. Cluster two (C2) corresponds to relationships and behavior. 
 
 The model also identifies three other clusters, that appear to comprise individual items as well as other clusters. 
@@ -280,13 +288,6 @@ trauma_clust
 trauma_clust[20]
 ```
 Another clustering algorithm is known as k-means clustering. 
-
-# K-Means Cluster Analysis
-fit <- kmeans(mydata, 5) # 5 cluster solution
-# get cluster means
-aggregate(mydata,by=list(fit$cluster),FUN=mean)
-# append cluster assignment
-mydata <- data.frame(mydata, fit$cluster)
 
 ```{r}
 trauma_clus_fit <- kmeans(trauma, 3)
@@ -323,6 +324,104 @@ trauma_2_stress %>%
 ```
 Looks like cluster 2 corresponds to the stress variable. 
 
+# Mental emotional stress
+
+Let's look at our new variable, the measure of problems with thoughts and feelings, that we will interpret as a generalized measure of stress on the household from the everyday environment. We'll take the factor from the two-factor model.  
+
+```{r}
+str(trauma_2_stress)
+
+dat <- dat %>%
+  mutate(stress=trauma_2_stress$stress,
+         stress_bin = trauma_2_stress$stress_bin,
+         stress_quin = trauma_2_stress$stress_quin)
+
+write_dta(dat, here("data/local/SSD resilience baseline prepared.dta"))
+
+```
+
+
+```{r}
+# stress_cnty <- svyrdat %>%
+#   group_by(county) %>%
+#   summarize_at(c("trauma", "stress", "stress_bin", "stress_quin"), 
+#                list(se=std.error,
+#                     mean=mean))
+# 
+# 
+# stress_cnty
+
+stress_cnty <- svyrdat %>%
+  group_by(county) %>%
+  summarize(se = std.error(stress),
+            stress=mean(stress, na.rm=T)) %>%
+  mutate(lower=stress-1.96*se,
+         upper=stress+1.96*se)
+
+stress_cnty
+```
+
+```{r}
+
+ggplot(stress_cnty, aes(stress, fct_reorder(county, stress))) + 
+  geom_vline(xintercept=0, size=1, alpha=.7, color="darkgoldenrod2") +
+  #geom_vline(xintercept=4, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower, xmax=upper),
+                color="dodgerblue",
+                width=0,
+                size=1) +
+  scale_x_continuous(limits=c(-.5,1),
+                     breaks=seq(-.5,1, .25)) +
+  labs(x="Stress",
+       y="")
+```
+
+Recalling the bimodal nature of the factor variable, let's look at the binary version. 
+
+```{r}
+stress_cnty_bin <- svyrdat %>%
+  group_by(county) %>%
+  summarize(se = std.error(stress_bin),
+            stress_bin=mean(stress_bin, na.rm=T)) %>%
+  mutate(lower=stress_bin-1.96*se,
+         upper=stress_bin+1.96*se)
+
+stress_cnty_bin
+```
+
+```{r}
+
+stress_bin_mn <- svyrdat %>%
+  group_by() %>%
+  summarize(stress_bin=survey_mean(stress_bin))
+
+# stress_bin_mn
+
+ggplot(stress_cnty_bin, aes(stress_bin, fct_reorder(county, stress_bin))) + 
+  geom_vline(xintercept=stress_bin_mn[,1], size=1, alpha=.7, color="darkgoldenrod2") +
+  #geom_vline(xintercept=4, size=1, alpha=.7, color="aquamarine3") + 
+  geom_point(color="dodgerblue", size=3) + 
+  geom_errorbar(aes(xmin=lower, xmax=upper),
+                color="dodgerblue",
+                width=0,
+                size=1) +
+  scale_x_continuous(limits=c(0,1),
+                     breaks=seq(0,1, .25),
+                     labels=percent) +
+  labs(x="Stress",
+       y="")
+```
+
+Recalling the original composite variable of exposure to any trauma, the incidence of mental-emotional stress is lower but the variance is higher. For all measures, the high value for Pibor county is cause for concern both programmatically and from a standpoint of data quality. 
+
+
 # Concluding thoughts
 
+- the six trauma items map to three suggested factors: behavioral issues, mental and emotional stress, and physical symptoms
 
+- if we're looking for a measure of generalized stress from the environment, mental and emotional stress seems to be what we're looking for
+
+- we save different versions of this stress variable: standardized continuous, binary, and ordinal
+
+- we can also do cluster analysis, which seems to replicate the results of factor analysis

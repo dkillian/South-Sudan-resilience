@@ -66,4 +66,66 @@ tab_xtab(dat$trauma,
          show.col.prc = T)
 
 
+# event counts ---- 
+
+acl <- read_csv("data/contextual/Violent_Events_by_EA.csv") %>%
+  as.data.frame()
+
+str(acl)
+names(acl)
+
+acl[,7:15][is.na(acl[,7:15])] <- 0
+
+names(dat)
+
+out <- dat %>%
+  left_join(acl, by=c("ea"="treat_phas")) %>%
+  filter(!is.na(q_601)) %>%
+  rename(conflict=q_601)
+
+?left_join
+
+
+## 
+
+frq(out$q_601)
+
+set.seed(4523)
+
+#sample <- round(nrow(out)*.7)
+
+library(caret)
+index <- createDataPartition(out$treat_phase, p=.7, list=F)
+index
+
+train <- out[index,]
+test <- out[-index,]
+
+names(out)
+
+r1 <- randomForest(as.factor(conflict) ~ E_15km_30D + E_15km_60D + E_15km_90D + 
+                     E_30km_30D + E_30km_60D + E_30km_90D +
+                     E_45km_30D + E_45km_60D + E_45km_90D,
+                   data=train)
+
+summary(r1)
+r1
+
+a <- varImp(r1) %>%
+  arrange(desc(Overall))
+
+a
+
+l1 <- lm(conflict ~ E_15km_30D + E_15km_60D + E_15km_90D + 
+           E_30km_30D + E_30km_60D + E_30km_90D +
+           E_45km_30D + E_45km_60D + E_45km_90D,
+         data=train)
+
+summary(l1)
+
+
+
+
+
+
 

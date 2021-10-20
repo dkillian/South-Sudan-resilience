@@ -39,9 +39,11 @@ fa.parallel(trauma,
 
 trauma_fa_3 <- fa(trauma,
                   nfactors=3,
+                  fm="ml",
                   cor="tet")
 
 trauma_fa_3
+summary(trauma_fa_3)
 
 trauma_fa_3_scores <- trauma_fa_3$scores %>%
   as.data.frame()

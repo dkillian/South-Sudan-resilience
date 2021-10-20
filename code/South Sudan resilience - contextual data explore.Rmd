@@ -1,0 +1,110 @@
+---
+title: "Contextual data explore"
+author: "Dan Killian"
+date: "10/19/2021"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: paper
+    fig.caption: true
+    code_folding: hide
+    df_print: kable
+---
+
+```{r global_options, include=F, warning=F, message=F, echo=F, error=F}
+# standard figure size and generate clean output
+knitr::opts_chunk$set(fig.height=4, fig.width=6, warning=FALSE, message=FALSE, cache=TRUE, error=T, echo=T)
+
+library(here)
+
+source(here("code/00 South Sudan resilience - prep.R"))
+
+dat <- here(read_dta(here("data/local/SSD resilience baseline prepared.dta")))
+
+
+# svyrdat <- dat %>%
+#   as_survey_design(ids = ea,
+#                    strata=county,
+#                    weights=final_wt1)
+```
+
+# Introduction
+
+The South Sudan Monitoring and Evaluation Support Project (MESP) is conducting a household resilience survey in 13 counties. The purpose of this household survey is to obtain baseline data in the target areas for the indicators included in the Mission's Performance Management Plan (PMP) and the Community Roadmap, in support of USAID/South Sudan's Strategic Framework (2020-2024).
+
+MESP has completed data collection in six counties, and as of October 2021 is carrying out data collection in the remaining seven counties. The study team is currently reviewing the data from six counties in advance of analysis of the full set of 13 counties. This document is one of a series of documents to review various measures and indices relating to resilience.
+
+## Contextual information
+
+Environmental forces may play a role in affecting household resilience.
+
+The survey asks six questions pertaining to the incidence of trauma. The preparatory text explains that trauma occurs when distressing events cause stress that changes a person's thinking, feelings, behavior, interpersonal relationships, physical well-being, or functioning for daily activities. The following table shows these item frequencies.
+
+```{r}
+
+acl <- here(read_csv("data/contextual/Violent_Events_by_EA.csv")) %>%
+  as.data.frame()
+
+str(acl)
+names(acl)
+
+acl[,7:15][is.na(acl[,7:15])] <- 0
+
+names(dat)
+
+out <- dat %>%
+  left_join(acl, by=c("ea"="treat_phas")) %>%
+  filter(!is.na(q_601)) %>%
+  rename(conflict=q_601)
+
+
+```
+
+```{r}
+
+set.seed(4523)
+
+library(caret)
+index <- createDataPartition(out$treat_phase, p=.7, list=F)
+index
+
+train <- out[index,]
+test <- out[-index,]
+
+names(out)
+
+r1 <- randomForest(as.factor(conflict) ~ E_15km_30D + E_15km_60D + E_15km_90D + 
+                     E_30km_30D + E_30km_60D + E_30km_90D +
+                     E_45km_30D + E_45km_60D + E_45km_90D,
+                   data=out)
+
+r1
+
+```
+
+```{r}
+r1_gini <- varImp(r1) %>%
+  as.data.frame() %>%
+  rownames_to_column("Measure") %>%
+  arrange(desc(Overall))
+
+kable(r1_gini,
+      caption="Predictive power of ACLED events on the probability of a survey respondent reporting that their community is conflict-affected")
+```
+
+```{r fig.cap="Variable importance for using ACLED event data to predict the probability of a respondent reporting that their community is conflict-affected"}
+ggplot(r1_gini, aes(Overall, fct_reorder(Measure, Overall))) + 
+  geom_point(size=3, color="dodgerblue2") + 
+  labs(x="Decrease in predictive power (Gini index)",
+       y="",
+       title="Variable importance")
+```
+
+The two most important variables are events within 45 kilometers, and either 30 or 90 days.
+
+```{r}
+
+```
